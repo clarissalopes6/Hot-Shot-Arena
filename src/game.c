@@ -1,49 +1,38 @@
+#include "raylib.h"
 #include "game.h"
-#include <stdio.h>
-#include <string.h>
 
-void iniciarJogo(Jogo *jogo) {
-    strcpy(jogo->timeA.nome, "Time A");
-    strcpy(jogo->timeB.nome, "Time B");
-    jogo->timeA.qtdJogadores = MAX_JOGADORES;
-    jogo->timeB.qtdJogadores = MAX_JOGADORES;
-    for (int i = 0; i < MAX_JOGADORES; i++) {
-        sprintf(jogo->timeA.jogadores[i].nome, "A_Jogador%d", i+1);
-        jogo->timeA.jogadores[i].acertos = 0;
-        jogo->timeA.jogadores[i].eliminacoes = 0;
-        jogo->timeA.jogadores[i].emCampo = 1;
-        jogo->timeA.jogadores[i].prox = NULL;
-        sprintf(jogo->timeB.jogadores[i].nome, "B_Jogador%d", i+1);
-        jogo->timeB.jogadores[i].acertos = 0;
-        jogo->timeB.jogadores[i].eliminacoes = 0;
-        jogo->timeB.jogadores[i].emCampo = 1;
-        jogo->timeB.jogadores[i].prox = NULL;
-    }
-    jogo->pontuacaoA = 0;
-    jogo->pontuacaoB = 0;
-    jogo->tempo = 0;
-    jogo->timeA.filaEspera.inicio = NULL;
-    jogo->timeA.filaEspera.fim = NULL;
-    jogo->timeB.filaEspera.inicio = NULL;
-    jogo->timeB.filaEspera.fim = NULL;
+Texture2D campo;
+Texture2D player;
+Vector2 playerPos = { 500, 500 };
+
+void InitGame() {
+    campo = LoadTexture("assets/quadra.png");
+    player = LoadTexture("assets/player.png");
 }
 
-void jogarRodada(Jogo *jogo) {
-    printf("Executando rodada...\n");
+void UpdateGame() {
+    if (IsKeyDown(KEY_RIGHT)) playerPos.x += 5;
+    if (IsKeyDown(KEY_LEFT)) playerPos.x -= 5;
+    if (IsKeyDown(KEY_UP)) playerPos.y -= 5;
+    if (IsKeyDown(KEY_DOWN)) playerPos.y += 5;
+
+    if (playerPos.x < 0) playerPos.x = 0;
+    if (playerPos.y < 0) playerPos.y = 0;
+    if (playerPos.x > GetScreenWidth() - player.width) playerPos.x = GetScreenWidth() - player.width;
+    if (playerPos.y > GetScreenHeight() - player.height) playerPos.y = GetScreenHeight() - player.height;
 }
 
-void eliminarJogador(Time *time, int idxJogador) {
-    printf("Eliminando jogador %s\n", time->jogadores[idxJogador].nome);
+void DrawGame() {
+    BeginDrawing();
+    ClearBackground(RAYWHITE);
+
+    DrawTexture(campo, 0, 0, WHITE);
+    DrawTexture(player, playerPos.x, playerPos.y, WHITE);
+
+    EndDrawing();
 }
 
-void resgatarJogador(Time *time) {
-    printf("Resgatando jogador da fila de espera\n");
-}
-
-void exibirRanking(Time *time) {
-    printf("Ranking do time %s:\n", time->nome);
-}
-
-void salvarPartida(Jogo *jogo) {
-    printf("Salvando partida...\n");
+void UnloadGame() {
+    UnloadTexture(campo);
+    UnloadTexture(player);
 }
