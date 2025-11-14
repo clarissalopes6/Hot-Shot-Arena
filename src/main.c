@@ -3,8 +3,7 @@
 
 int main(void) {
 
-    InitWindow(0, 0, "Hot Shot Arena");
-    ToggleFullscreen();
+    InitWindow(1200, 800, "Hot Shot Arena");
     SetTargetFPS(60);
 
     Game game;

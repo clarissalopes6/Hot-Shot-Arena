@@ -31,7 +31,12 @@ typedef struct Player {
     float scale;
 
     PlayerState state;
-    int facing;    
+    int facing;
+    
+    bool hasBall;
+    float throwForce;
+    bool isCharging;
+    float ballPickupCooldown;
 } Player;
 
 Player InitPlayer(void);

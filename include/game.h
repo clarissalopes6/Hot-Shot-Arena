@@ -2,10 +2,12 @@
 #define GAME_H
 
 #include "player.h"
+#include "ball.h"
 
 typedef struct {
     Texture2D campo;
     Player player;
+    Ball ball;
 } Game;
 
 void InitGame(Game *game);
