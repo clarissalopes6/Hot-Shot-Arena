@@ -2,19 +2,20 @@
 #include "game.h"
 
 int main(void) {
-    
+
     InitWindow(0, 0, "Hot Shot Arena");
     ToggleFullscreen();
     SetTargetFPS(60);
 
-    InitGame(); 
+    Game game;
+    InitGame(&game);
 
     while (!WindowShouldClose()) {
-        UpdateGame();  
-        DrawGame();    
+        UpdateGame(&game);
+        DrawGame(&game);
     }
 
-    UnloadGame();  
-    CloseWindow(); 
+    UnloadGame(&game);
+    CloseWindow();
     return 0;
 }

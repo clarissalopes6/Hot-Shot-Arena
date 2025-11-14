@@ -1,38 +1,55 @@
 #include "raylib.h"
 #include "game.h"
 
-Texture2D campo;
-Texture2D player;
-Vector2 playerPos = { 500, 500 };
-
-void InitGame() {
-    campo = LoadTexture("assets/quadra.png");
-    player = LoadTexture("assets/player.png");
+void InitGame(Game *game) {
+    game->campo = LoadTexture("assets/quadra.png");
+    game->player = InitPlayer();
 }
 
-void UpdateGame() {
-    if (IsKeyDown(KEY_RIGHT)) playerPos.x += 5;
-    if (IsKeyDown(KEY_LEFT)) playerPos.x -= 5;
-    if (IsKeyDown(KEY_UP)) playerPos.y -= 5;
-    if (IsKeyDown(KEY_DOWN)) playerPos.y += 5;
+void UpdateGame(Game *game) {
+    float screenW = GetScreenWidth();
+    float screenH = GetScreenHeight();
 
-    if (playerPos.x < 0) playerPos.x = 0;
-    if (playerPos.y < 0) playerPos.y = 0;
-    if (playerPos.x > GetScreenWidth() - player.width) playerPos.x = GetScreenWidth() - player.width;
-    if (playerPos.y > GetScreenHeight() - player.height) playerPos.y = GetScreenHeight() - player.height;
+    float imgW = game->campo.width;
+    float imgH = game->campo.height;
+
+    float scale = screenH / imgH;
+    float scaledW = imgW * scale;
+
+    float offsetX = (screenW - scaledW) / 2;
+    float minX = offsetX;
+    float maxX = offsetX + scaledW;
+
+    UpdatePlayer(&game->player, minX, maxX, screenH);
 }
 
-void DrawGame() {
+void DrawGame(Game *game) {
     BeginDrawing();
     ClearBackground(RAYWHITE);
 
-    DrawTexture(campo, 0, 0, WHITE);
-    DrawTexture(player, playerPos.x, playerPos.y, WHITE);
+    float screenW = GetScreenWidth();
+    float screenH = GetScreenHeight();
+
+    float imgW = game->campo.width;
+    float imgH = game->campo.height;
+
+    float scale = screenH / imgH;
+    float scaledW = imgW * scale;
+    float scaledH = imgH * scale;
+
+    float offsetX = (screenW - scaledW) / 2;
+
+    Rectangle source = { 0, 0, imgW, imgH };
+    Rectangle dest   = { offsetX, 0, scaledW, scaledH };
+
+    DrawTexturePro(game->campo, source, dest, (Vector2){0,0}, 0.0f, WHITE);
+
+    DrawPlayer(&game->player);
 
     EndDrawing();
 }
 
-void UnloadGame() {
-    UnloadTexture(campo);
-    UnloadTexture(player);
+void UnloadGame(Game *game) {
+    UnloadTexture(game->campo);
+    UnloadPlayer(&game->player);
 }
