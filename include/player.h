@@ -2,6 +2,7 @@
 #define PLAYER_H
 
 #include "raylib.h"
+#include <stdbool.h>
 
 typedef enum {
     STATE_IDLE,
@@ -37,6 +38,8 @@ typedef struct Player {
     float throwForce;
     bool isCharging;
     float ballPickupCooldown;
+    
+    int score; 
 } Player;
 
 Player InitPlayer(void);

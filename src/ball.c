@@ -21,6 +21,10 @@ Ball InitBall(void) {
     ball.isVisible = true;
     ball.isBeingCarried = false;
     
+    ball.z = 0.0f;
+    ball.zVelocity = 0.0f;
+    ball.isRecentlyThrown = false;
+    
     return ball;
 }
 
@@ -35,6 +39,24 @@ void UpdateBall(Ball *ball) {
         if (fabs(ball->velocity.x) < 0.1f && fabs(ball->velocity.y) < 0.1f) {
             ball->velocity.x = 0;
             ball->velocity.y = 0;
+            ball->isRecentlyThrown = false; 
+        }
+        
+        if (ball->isRecentlyThrown && GetFrameTime() > 0.01f) {
+            ball->isRecentlyThrown = false; 
+        }
+        
+        float gravity = 9.8f; 
+        
+        ball->zVelocity -= gravity * GetFrameTime();
+        ball->z += ball->zVelocity * GetFrameTime();
+
+        if (ball->z < 0.0f) {
+            ball->z = 0.0f;
+            ball->zVelocity = 0.0f;
+            
+            ball->velocity.x *= 0.6f; 
+            ball->velocity.y *= 0.6f;
         }
         
         float ballRadius = ball->radius * ball->scale;
@@ -63,11 +85,13 @@ void UpdateBall(Ball *ball) {
 
 void DrawBall(Ball *ball) {
     if (ball->isVisible && !ball->isBeingCarried) {
+        float offsetY = ball->z * 10.0f; 
+        
         if (ball->texture.id > 0) {
             float size = ball->radius * 2 * ball->scale;
             Rectangle destRec = {
                 ball->position.x - size/2,
-                ball->position.y - size/2,
+                ball->position.y - size/2 - offsetY,
                 size,
                 size
             };
@@ -75,7 +99,7 @@ void DrawBall(Ball *ball) {
             
             DrawTexturePro(ball->texture, sourceRec, destRec, (Vector2){0, 0}, 0, WHITE);
         } else {
-            DrawCircle(ball->position.x, ball->position.y, ball->radius * ball->scale, ORANGE);
+            DrawCircle(ball->position.x, ball->position.y - offsetY, ball->radius * ball->scale, ORANGE);
         }
     }
 }
@@ -83,6 +107,8 @@ void DrawBall(Ball *ball) {
 bool CheckBallPlayerCollision(Ball *ball, Vector2 playerPos, float playerWidth, float playerHeight) {
     if (ball->isBeingCarried || !ball->isVisible) return false;
     
+    if (ball->isRecentlyThrown) return false;
+
     float closestX = fmax(playerPos.x, fmin(ball->position.x, playerPos.x + playerWidth));
     float closestY = fmax(playerPos.y, fmin(ball->position.y, playerPos.y + playerHeight));
     
@@ -98,7 +124,10 @@ void ThrowBall(Ball *ball, Vector2 playerPos, int direction, float force) {
     ball->isBeingCarried = false;
     ball->isVisible = true;
     
-    float playerWidth = 64;
+    ball->isRecentlyThrown = true;
+
+    float playerWidth = 64; 
+    
     if (direction > 0) {
         ball->position.x = playerPos.x + playerWidth + 20;
     } else {
@@ -110,8 +139,8 @@ void ThrowBall(Ball *ball, Vector2 playerPos, int direction, float force) {
     ball->velocity.x = direction * throwForce;
     ball->velocity.y = 0;
     
-    printf("Throwing ball: direction=%d, force=%.2f, velocity.x=%.2f, playerPos=(%.2f,%.2f)\n", 
-           direction, force, ball->velocity.x, playerPos.x, playerPos.y);
+    ball->z = 0.0f;
+    ball->zVelocity = 5.0f * (force / 100.0f);
 }
 
 void UnloadBall(Ball *ball) {

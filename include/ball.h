@@ -2,6 +2,7 @@
 #define BALL_H
 
 #include "raylib.h"
+#include <stdbool.h>
 
 typedef struct {
     Texture2D texture;
@@ -11,6 +12,10 @@ typedef struct {
     bool isVisible;
     bool isBeingCarried;
     float scale;
+    
+    float z;            
+    float zVelocity;    
+    bool isRecentlyThrown; 
 } Ball;
 
 Ball InitBall(void);

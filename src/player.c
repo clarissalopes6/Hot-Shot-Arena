@@ -46,6 +46,7 @@ Player InitPlayer(void) {
     player.throwForce = 0.0f;
     player.isCharging = false;
     player.ballPickupCooldown = 0.0f;
+    player.score = 0;
 
     return player;
 }
@@ -118,29 +119,29 @@ void UpdatePlayer(Player *player, float minX, float maxX, int screenH) {
             }
         } else if (IsKeyReleased(KEY_Z) && player->isCharging) {
             player->isCharging = false;
-            player->ballPickupCooldown = 1.0f;
+           
         } else {
             player->isCharging = false;
             player->throwForce = 0.0f;
         }
     }
-  
+ 
     if (IsKeyPressed(KEY_X)) player->state = STATE_PASS;
     if (IsKeyPressed(KEY_C)) player->state = STATE_THROW;
 
     player->position.x += player->velocity.x;
     player->position.y += player->velocity.y;
 
-    float midX = (minX + maxX) / 2;
-    
     if (player->position.x < minX) player->position.x = minX;
-    if (player->position.x + player->frameWidth * player->scale > midX)
-        player->position.x = midX - player->frameWidth * player->scale;
+    
+    if (player->position.x + player->frameWidth * player->scale > maxX)
+        player->position.x = maxX - player->frameWidth * player->scale;
 
+    float playerBottomY = player->position.y + player->frameHeight * player->scale;
     if (player->position.y < 0) player->position.y = 0;
-    if (player->position.y + player->frameHeight * player->scale > screenH)
+    if (playerBottomY > screenH) 
         player->position.y = screenH - player->frameHeight * player->scale;
-
+        
     int row = GetRowByState(player->state);
     int frameCount = GetFrameCount(player->state);
 
@@ -206,7 +207,7 @@ void DrawPlayer(Player *player) {
     
     if (player->hasBall) {
         DrawCircle(player->position.x + player->frameWidth * player->scale / 2, 
-                  player->position.y - 10, 5, ORANGE);
+                   player->position.y - 10, 5, ORANGE);
     }
 }
 
