@@ -1,7 +1,9 @@
 CC = gcc
-CFLAGS = -Wall -std=c99 -Iinclude
-SRC = $(shell ls src/*.c)
+CFLAGS = -Wall -Wextra -std=c99 -Iinclude
+
+SRC = src/main.c src/menu.c src/game.c src/assets.c src/list.c
 OUT = bin/hotshot
+
 LIBS = -lraylib -lm -lpthread -ldl -lGL -lrt -lX11
 
 all:
@@ -9,7 +11,4 @@ all:
 	$(CC) $(CFLAGS) $(SRC) -o $(OUT) $(LIBS)
 
 run: all
-	./$(OUT)
-
-clean:
-	rm -rf bin
+	./bin/hotshot

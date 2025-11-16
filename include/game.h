@@ -1,33 +1,44 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include "player.h"
-#include "ball.h"
+#include "assets.h"
 #include "list.h"
-#include "bot.h"
-#include "sort.h"
 
 typedef struct {
-    Texture2D campo;
+    float x;
+    float y;
+    float speed;
+    int lives;
+} Player;
+
+typedef struct {
+    float x;
+    float y;
+    float shoot_timer;
+    float shoot_cooldown;
+} Tank;
+
+typedef struct {
+    char name[50];
+    int score;
+    int lives_remaining;
+    float time_survived;
+} ScoreEntry;
+
+typedef struct {
     Player player;
-    Ball ball;
-    
-    Player opponent[3];
-    
-    Queue *team1_wait_queue;
-    Queue *team2_wait_queue;
-    
-    int score_team1;
-    int score_team2;
-} Game;
+    Tank tank;
+    BallList *balls;
+    int lives;
+    bool game_over;
+    int score;
+    float time_survived;
+} GameState;
 
-void eliminarJogador(Player *player, Queue *waitQueue, Ball *ball);
-void resgatarJogador(Player *player, Queue *waitQueue, Vector2 spawnPos);
-void exibirRanking(Game *game, float offsetX, int screenH);
-
-void InitGame(Game *game);
-void UpdateGame(Game *game);
-void DrawGame(Game *game);
-void UnloadGame(Game *game);
+void init_game(GameState *state);
+void update_game(GameState *state);
+void draw_game(GameState *state, float time_remaining, Assets *assets);
+float get_game_time_remaining(void);
+bool is_game_over(GameState *state);
 
 #endif

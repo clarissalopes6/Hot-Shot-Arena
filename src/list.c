@@ -1,71 +1,80 @@
 #include "list.h"
 #include <stdlib.h>
-#include <stdio.h>
 
-Queue *InitQueue() {
-    Queue *q = (Queue *)malloc(sizeof(Queue));
-    if (q == NULL) {
-        return NULL;
+BallList* ball_list_create(void) {
+    BallList *list = (BallList*)malloc(sizeof(BallList));
+    if (list) {
+        list->head = NULL;
+        list->tail = NULL;
+        list->count = 0;
     }
-    q->front = NULL;
-    q->rear = NULL;
-    q->count = 0;
-    return q;
+    return list;
 }
 
-bool IsQueueEmpty(Queue *q) {
-    return (q->front == NULL);
+void ball_list_destroy(BallList *list) {
+    if (!list) return;
+    ball_list_clear(list);
+    free(list);
 }
 
-void Enqueue(Queue *q, Player player) {
-    Node *newNode = (Node *)malloc(sizeof(Node));
-    if (newNode == NULL) {
-        return;
-    }
-    newNode->data = player;
-    newNode->next = NULL;
-
-    if (IsQueueEmpty(q)) {
-        q->front = newNode;
-        q->rear = newNode;
+Ball* ball_list_add(BallList *list) {
+    if (!list) return NULL;
+    
+    Ball *new_ball = (Ball*)malloc(sizeof(Ball));
+    if (!new_ball) return NULL;
+    
+    new_ball->x = 0;
+    new_ball->y = 0;
+    new_ball->vx = 0;
+    new_ball->vy = 0;
+    new_ball->speed = 0;
+    new_ball->active = false;
+    new_ball->next = NULL;
+    new_ball->prev = NULL;
+    
+    if (list->tail == NULL) {
+        list->head = new_ball;
+        list->tail = new_ball;
     } else {
-        q->rear->next = newNode;
-        q->rear = newNode;
-    }
-    q->count++;
-}
-
-Player Dequeue(Queue *q) {
-    if (IsQueueEmpty(q)) {
-        Player emptyPlayer = {0}; 
-        return emptyPlayer; 
-    }
-
-    Node *temp = q->front;
-    Player player = temp->data;
-
-    q->front = q->front->next;
-    
-    if (q->front == NULL) {
-        q->rear = NULL;
+        new_ball->prev = list->tail;
+        list->tail->next = new_ball;
+        list->tail = new_ball;
     }
     
-    free(temp);
-    q->count--;
-    return player;
+    list->count++;
+    return new_ball;
 }
 
-void ClearQueue(Queue *q) {
-    Node *current = q->front;
-    Node *next;
+void ball_list_remove(BallList *list, Ball *ball) {
+    if (!list || !ball) return;
+    
+    if (ball->prev) {
+        ball->prev->next = ball->next;
+    } else {
+        list->head = ball->next;
+    }
+    
+    if (ball->next) {
+        ball->next->prev = ball->prev;
+    } else {
+        list->tail = ball->prev;
+    }
+    
+    list->count--;
+    free(ball);
+}
 
-    while (current != NULL) {
-        next = current->next;
+void ball_list_clear(BallList *list) {
+    if (!list) return;
+    
+    Ball *current = list->head;
+    while (current) {
+        Ball *next = current->next;
         free(current);
         current = next;
     }
-    q->front = NULL;
-    q->rear = NULL;
-    q->count = 0;
-    free(q);
+    
+    list->head = NULL;
+    list->tail = NULL;
+    list->count = 0;
 }

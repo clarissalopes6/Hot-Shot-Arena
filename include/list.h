@@ -1,24 +1,29 @@
 #ifndef LIST_H
 #define LIST_H
 
-#include "player.h"
 #include <stdbool.h>
 
-typedef struct Node {
-    Player data;
-    struct Node *next;
-} Node;
+typedef struct Ball {
+    float x;
+    float y;
+    float vx;
+    float vy;
+    float speed;
+    bool active;
+    struct Ball *next;
+    struct Ball *prev;
+} Ball;
 
-typedef struct Queue {
-    Node *front;
-    Node *rear;
+typedef struct {
+    Ball *head;
+    Ball *tail;
     int count;
-} Queue;
+} BallList;
 
-Queue *InitQueue();
-void Enqueue(Queue *q, Player player);
-Player Dequeue(Queue *q);
-bool IsQueueEmpty(Queue *q);
-void ClearQueue(Queue *q);
+BallList* ball_list_create(void);
+void ball_list_destroy(BallList *list);
+Ball* ball_list_add(BallList *list);
+void ball_list_remove(BallList *list, Ball *ball);
+void ball_list_clear(BallList *list);
 
 #endif
