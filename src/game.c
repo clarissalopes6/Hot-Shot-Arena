@@ -157,8 +157,8 @@ void draw_game(GameState *state, float time_remaining, Assets *assets) {
         DrawRectangle((int)state->player.x, (int)state->player.y, PLAYER_SIZE, PLAYER_SIZE, BLUE);
     }
     
-    if (assets->ball.id > 0) {
-        DrawTexture(assets->ball, (int)state->tank.x - 20, (int)state->tank.y - 20, WHITE);
+    if (assets->lancador.id > 0) {
+        DrawTexture(assets->lancador, (int)state->tank.x - 20, (int)state->tank.y - 20, WHITE);
     } else {
         DrawRectangle((int)state->tank.x - 20, (int)state->tank.y - 20, 40, 40, RED);
     }

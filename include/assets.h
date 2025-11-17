@@ -9,6 +9,7 @@ typedef struct {
     Texture2D ball;
     Texture2D menu;
     Texture2D instructions;
+    Texture2D lancador;
 } Assets;
 
 Assets load_assets(void);

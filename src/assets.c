@@ -24,6 +24,10 @@ Assets load_assets(void) {
         assets.instructions = LoadTexture("assets/instructions.png");
     }
     
+    if (FileExists("assets/lancador.png")) {
+        assets.lancador = LoadTexture("assets/lancador.png");
+    }
+    
     return assets;
 }
 
@@ -33,4 +37,5 @@ void unload_assets(Assets *assets) {
     if (assets->ball.id > 0) UnloadTexture(assets->ball);
     if (assets->menu.id > 0) UnloadTexture(assets->menu);
     if (assets->instructions.id > 0) UnloadTexture(assets->instructions);
+    if (assets->lancador.id > 0) UnloadTexture(assets->lancador);
 }
