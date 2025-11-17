@@ -29,6 +29,10 @@ Ball* ball_list_add(BallList *list) {
     new_ball->vy = 0;
     new_ball->speed = 0;
     new_ball->active = false;
+    new_ball->is_different = false;
+    new_ball->thrown_by_player = false;
+    new_ball->max_travel = 0.0f;
+    new_ball->travelled = 0.0f;
     new_ball->next = NULL;
     new_ball->prev = NULL;
     

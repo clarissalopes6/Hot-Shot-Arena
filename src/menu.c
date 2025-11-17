@@ -1,5 +1,7 @@
 #include "raylib.h"
 #include "menu.h"
+#include <string.h>
+#include "ranking.h"
 
 #define SCREEN_WIDTH 1280
 #define SCREEN_HEIGHT 720
@@ -19,6 +21,12 @@ MenuState draw_initial_menu(Assets *assets) {
         BUTTON_WIDTH, 
         BUTTON_HEIGHT
     };
+    Rectangle ranking_btn = {
+        SCREEN_WIDTH/2 - BUTTON_WIDTH/2,
+        SCREEN_HEIGHT/2 + 100,
+        BUTTON_WIDTH,
+        BUTTON_HEIGHT
+    };
     
     BeginDrawing();
     ClearBackground(BLACK);
@@ -32,6 +40,7 @@ MenuState draw_initial_menu(Assets *assets) {
     
     Color start_color = CheckCollisionPointRec(GetMousePosition(), start_btn) ? YELLOW : WHITE;
     Color instr_color = CheckCollisionPointRec(GetMousePosition(), instructions_btn) ? YELLOW : WHITE;
+    Color rank_color = CheckCollisionPointRec(GetMousePosition(), ranking_btn) ? YELLOW : WHITE;
     
     DrawRectangleRec(start_btn, (Color){0, 0, 0, 150});
     DrawRectangleLinesEx(start_btn, 3, start_color);
@@ -40,6 +49,10 @@ MenuState draw_initial_menu(Assets *assets) {
     DrawRectangleRec(instructions_btn, (Color){0, 0, 0, 150});
     DrawRectangleLinesEx(instructions_btn, 3, instr_color);
     DrawText("Instruções", instructions_btn.x + 35, instructions_btn.y + 15, 20, instr_color);
+
+    DrawRectangleRec(ranking_btn, (Color){0, 0, 0, 150});
+    DrawRectangleLinesEx(ranking_btn, 3, rank_color);
+    DrawText("Ranking", ranking_btn.x + 60, ranking_btn.y + 15, 20, rank_color);
     
     EndDrawing();
     
@@ -49,6 +62,9 @@ MenuState draw_initial_menu(Assets *assets) {
         }
         if (CheckCollisionPointRec(GetMousePosition(), instructions_btn)) {
             return MENU_INSTRUCTIONS;
+        }
+        if (CheckCollisionPointRec(GetMousePosition(), ranking_btn)) {
+            return MENU_RANKING;
         }
     }
     
@@ -86,5 +102,89 @@ MenuState draw_instructions_menu(Assets *assets) {
         }
     }
     
+    return -1;
+}
+
+MenuState draw_ranking_menu(Assets *assets) {
+    (void)assets;
+    Rectangle back_btn = {
+        SCREEN_WIDTH/2 - BUTTON_WIDTH/2,
+        SCREEN_HEIGHT - 120,
+        BUTTON_WIDTH,
+        BUTTON_HEIGHT
+    };
+
+   
+    RankEntry *entries = NULL;
+    int count = load_ranking("ranking.txt", &entries);
+
+    BeginDrawing();
+    ClearBackground(BLACK);
+
+    DrawText("Ranking - melhores tempos:", 120, 40, 24, WHITE);
+
+    int show = count < 10 ? count : 10;
+    for (int i = 0; i < show; i++) {
+        char line[128];
+        snprintf(line, sizeof(line), "%2d. %s - %.2fs", i+1, entries[i].name, entries[i].time);
+        DrawText(line, 140, 100 + i*30, 20, YELLOW);
+    }
+
+    DrawRectangleRec(back_btn, (Color){0,0,0,150});
+    Color back_color = CheckCollisionPointRec(GetMousePosition(), back_btn) ? YELLOW : WHITE;
+    DrawRectangleLinesEx(back_btn, 3, back_color);
+    DrawText("Voltar", back_btn.x + 55, back_btn.y + 15, 20, back_color);
+
+    EndDrawing();
+
+    if (entries) free(entries);
+
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        if (CheckCollisionPointRec(GetMousePosition(), back_btn)) {
+            return MENU_INITIAL;
+        }
+    }
+
+    return -1;
+}
+
+MenuState draw_name_input(Assets *assets, char *out_name, int maxlen) {
+    (void)assets; 
+    static char namebuf[64] = {0};
+    static int namelen = 0;
+    if (maxlen < 2) return -1;
+
+
+    int c = GetCharPressed();
+    while (c > 0) {
+       
+        if ((c >= 32) && (c <= 125) && namelen < maxlen - 1) {
+            namebuf[namelen++] = (char)c;
+            namebuf[namelen] = '\0';
+        }
+        c = GetCharPressed();
+    }
+    if (IsKeyPressed(KEY_BACKSPACE) && namelen > 0) {
+        namelen--;
+        namebuf[namelen] = '\0';
+    }
+
+    BeginDrawing();
+    ClearBackground(BLACK);
+    DrawText("Digite seu nome (ENTER para confirmar):", 200, 200, 24, WHITE);
+    DrawRectangle(200, 260, 600, 48, (Color){30,30,30,200});
+    DrawRectangleLines(200, 260, 600, 48, WHITE);
+    DrawText(namebuf, 210, 270, 28, YELLOW);
+    EndDrawing();
+
+    if (IsKeyPressed(KEY_ENTER) && namelen > 0) {
+        strncpy(out_name, namebuf, maxlen - 1);
+        out_name[maxlen - 1] = '\0';
+      
+        namelen = 0;
+        namebuf[0] = '\0';
+        return MENU_INITIAL;
+    }
+
     return -1;
 }

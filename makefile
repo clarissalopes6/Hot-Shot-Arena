@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99 -Iinclude
 
-SRC = src/main.c src/menu.c src/game.c src/assets.c src/list.c
+SRC = src/main.c src/menu.c src/game.c src/assets.c src/list.c src/ranking.c
 OUT = bin/hotshot
 
 LIBS = -lraylib -lm -lpthread -ldl -lGL -lrt -lX11

@@ -10,6 +10,10 @@ typedef struct Ball {
     float vy;
     float speed;
     bool active;
+    bool is_different;
+    bool thrown_by_player;
+    float max_travel;
+    float travelled;
     struct Ball *next;
     struct Ball *prev;
 } Ball;

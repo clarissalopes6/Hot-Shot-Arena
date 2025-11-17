@@ -16,6 +16,10 @@ Assets load_assets(void) {
         assets.ball = LoadTexture("assets/ball.png");
     }
     
+    if (FileExists("assets/bola-dif.png")) {
+        assets.ball_dif = LoadTexture("assets/bola-dif.png");
+    }
+    
     if (FileExists("assets/menu.png")) {
         assets.menu = LoadTexture("assets/menu.png");
     }
@@ -35,6 +39,7 @@ void unload_assets(Assets *assets) {
     if (assets->logo.id > 0) UnloadTexture(assets->logo);
     if (assets->player.id > 0) UnloadTexture(assets->player);
     if (assets->ball.id > 0) UnloadTexture(assets->ball);
+    if (assets->ball_dif.id > 0) UnloadTexture(assets->ball_dif);
     if (assets->menu.id > 0) UnloadTexture(assets->menu);
     if (assets->instructions.id > 0) UnloadTexture(assets->instructions);
     if (assets->lancador.id > 0) UnloadTexture(assets->lancador);

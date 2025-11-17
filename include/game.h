@@ -16,6 +16,7 @@ typedef struct {
     float y;
     float shoot_timer;
     float shoot_cooldown;
+    int health;
 } Tank;
 
 typedef struct {
@@ -29,10 +30,18 @@ typedef struct {
     Player player;
     Tank tank;
     BallList *balls;
+    char player_name[64];
+    Ball *held_ball;
+    float charge;
+    bool is_charging;
+    bool charge_increasing;
+    bool victory;
     int lives;
     bool game_over;
     int score;
     float time_survived;
+    bool paused_for_upgrade; 
+    int extra_special_damage; 
 } GameState;
 
 void init_game(GameState *state);

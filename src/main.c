@@ -9,6 +9,8 @@
 
 typedef enum {
     STATE_MENU,
+    STATE_NAME_INPUT,
+    STATE_RANKING,
     STATE_INSTRUCTIONS,
     STATE_GAME,
     STATE_EXIT
@@ -33,10 +35,27 @@ int main(void) {
                     state = STATE_EXIT;
                 } else if (menu_result == MENU_INSTRUCTIONS) {
                     state = STATE_INSTRUCTIONS;
+                } else if (menu_result == MENU_RANKING) {
+                    state = STATE_RANKING;
                 } else if (menu_result == MENU_INITIAL) {
+                    state = STATE_NAME_INPUT;
+                    game_over_timer = 0;
+                }
+                break;
+            }
+            case STATE_NAME_INPUT: {
+                MenuState name_result = draw_name_input(&assets, game_state.player_name, sizeof(game_state.player_name));
+                if (name_result == MENU_INITIAL) {
                     init_game(&game_state);
                     state = STATE_GAME;
                     game_over_timer = 0;
+                }
+                break;
+            }
+            case STATE_RANKING: {
+                MenuState rank_result = draw_ranking_menu(&assets);
+                if (rank_result == MENU_INITIAL) {
+                    state = STATE_MENU;
                 }
                 break;
             }

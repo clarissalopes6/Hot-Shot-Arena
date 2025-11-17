@@ -7,6 +7,7 @@ typedef struct {
     Texture2D logo;
     Texture2D player;
     Texture2D ball;
+    Texture2D ball_dif;
     Texture2D menu;
     Texture2D instructions;
     Texture2D lancador;
