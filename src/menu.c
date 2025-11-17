@@ -50,7 +50,7 @@ MenuState draw_initial_menu(Assets *assets) {
     };
     
     BeginDrawing();
-    ClearBackground(BLACK);
+    ClearBackground(GREEN);
     
     if (assets->menu.id > 0) {
         DrawTexturePro(assets->menu, 
@@ -59,9 +59,9 @@ MenuState draw_initial_menu(Assets *assets) {
                        (Vector2){0, 0}, 0, WHITE);
     }
     
-    Color start_color = CheckCollisionPointRec(GetMousePosition(), start_btn) ? YELLOW : WHITE;
-    Color instr_color = CheckCollisionPointRec(GetMousePosition(), instructions_btn) ? YELLOW : WHITE;
-    Color rank_color = CheckCollisionPointRec(GetMousePosition(), ranking_btn) ? YELLOW : WHITE;
+    Color start_color = CheckCollisionPointRec(GetMousePosition(), start_btn) ? GREEN : WHITE;
+    Color instr_color = CheckCollisionPointRec(GetMousePosition(), instructions_btn) ? GREEN : WHITE;
+    Color rank_color = CheckCollisionPointRec(GetMousePosition(), ranking_btn) ? GREEN : WHITE;
     
     DrawRectangleRec(start_btn, (Color){0, 0, 0, 150});
     DrawRectangleLinesEx(start_btn, 3, start_color);
@@ -101,7 +101,7 @@ MenuState draw_instructions_menu(Assets *assets) {
     };
     
     BeginDrawing();
-    ClearBackground(BLACK);
+    ClearBackground(GREEN);
     
     
     if (assets->instructions.id > 0) {
@@ -118,7 +118,7 @@ MenuState draw_instructions_menu(Assets *assets) {
         }
        
         DrawRectangle(80, SCREEN_HEIGHT - 220, SCREEN_WIDTH - 160, 180, (Color){10,10,10,180});
-        DrawText("Hot-Shot Arena", SCREEN_WIDTH/2 - 200, 60, 48, (Color){255,200,80,255});
+        DrawText("Hot Shot Arena", SCREEN_WIDTH/2 - 200, 60, 48, (Color){255,200,80,255});
         DrawText("Instruções", SCREEN_WIDTH/2 - 80, 120, 36, WHITE);
 
        
@@ -130,7 +130,7 @@ MenuState draw_instructions_menu(Assets *assets) {
 
   
     DrawRectangle(100, 160, SCREEN_WIDTH - 220, SCREEN_HEIGHT - 340, (Color){0,0,0,140});
-    DrawText("Regras e Objetivo:", 120, 180, 24, YELLOW);
+    DrawText("Regras e Objetivo:", 120, 180, 24, GREEN);
     const char *rules[] = {
         "- Você controla o jogador na metade esquerda do campo.",
         "- O lançador inimigo fica na metade direita e atira bolas constantemente.",
@@ -146,7 +146,7 @@ MenuState draw_instructions_menu(Assets *assets) {
         DrawText(rules[r], 120, 220 + r * 28, 20, WHITE);
     }
     
-    Color back_color = CheckCollisionPointRec(GetMousePosition(), back_btn) ? YELLOW : WHITE;
+    Color back_color = CheckCollisionPointRec(GetMousePosition(), back_btn) ? GREEN : WHITE;
     DrawRectangleRec(back_btn, (Color){0, 0, 0, 150});
     DrawRectangleLinesEx(back_btn, 3, back_color);
     DrawText("Voltar", back_btn.x + 55, back_btn.y + 15, 20, back_color);
@@ -162,8 +162,9 @@ MenuState draw_instructions_menu(Assets *assets) {
     return -1;
 }
 
+
 MenuState draw_ranking_menu(Assets *assets) {
-    (void)assets;
+
     Rectangle back_btn = {
         SCREEN_WIDTH/2 - BUTTON_WIDTH/2,
         SCREEN_HEIGHT - 120,
@@ -171,12 +172,21 @@ MenuState draw_ranking_menu(Assets *assets) {
         BUTTON_HEIGHT
     };
 
-   
     RankEntry *entries = NULL;
     int count = load_ranking("ranking.txt", &entries);
 
     BeginDrawing();
-    ClearBackground(BLACK);
+
+    if (assets->court.id > 0) {
+        DrawTexturePro(assets->court,
+                       (Rectangle){0,0,assets->court.width, assets->court.height},
+                       (Rectangle){0,0,SCREEN_WIDTH, SCREEN_HEIGHT},
+                       (Vector2){0,0}, 0.0f, WHITE);
+    } else {
+        draw_arena_background(assets);
+    }
+
+    DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){0,0,0,120});
 
     DrawText("Ranking - melhores tempos:", 120, 40, 24, WHITE);
 
@@ -184,11 +194,11 @@ MenuState draw_ranking_menu(Assets *assets) {
     for (int i = 0; i < show; i++) {
         char line[128];
         snprintf(line, sizeof(line), "%2d. %s - %.2fs", i+1, entries[i].name, entries[i].time);
-        DrawText(line, 140, 100 + i*30, 20, YELLOW);
+        DrawText(line, 140, 100 + i*30, 20, GREEN);
     }
 
     DrawRectangleRec(back_btn, (Color){0,0,0,150});
-    Color back_color = CheckCollisionPointRec(GetMousePosition(), back_btn) ? YELLOW : WHITE;
+    Color back_color = CheckCollisionPointRec(GetMousePosition(), back_btn) ? GREEN : WHITE;
     DrawRectangleLinesEx(back_btn, 3, back_color);
     DrawText("Voltar", back_btn.x + 55, back_btn.y + 15, 20, back_color);
 
@@ -240,7 +250,7 @@ MenuState draw_name_input(Assets *assets, char *out_name, int maxlen) {
     DrawText("Digite seu nome (ENTER para confirmar):", 200, 200, 24, WHITE);
     DrawRectangle(200, 260, 600, 48, (Color){30,30,30,200});
     DrawRectangleLines(200, 260, 600, 48, WHITE);
-    DrawText(namebuf, 210, 270, 28, YELLOW);
+    DrawText(namebuf, 210, 270, 28, GREEN);
     EndDrawing();
 
     if (IsKeyPressed(KEY_ENTER) && namelen > 0) {
