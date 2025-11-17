@@ -10,6 +10,7 @@ typedef struct {
     Texture2D ball_dif;
     Texture2D menu;
     Texture2D instructions;
+    Texture2D court;
     Texture2D lancador;
 } Assets;
 

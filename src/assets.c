@@ -27,6 +27,10 @@ Assets load_assets(void) {
     if (FileExists("assets/instructions.png")) {
         assets.instructions = LoadTexture("assets/instructions.png");
     }
+
+    if (FileExists("assets/court.png")) {
+        assets.court = LoadTexture("assets/court.png");
+    }
     
     if (FileExists("assets/lancador.png")) {
         assets.lancador = LoadTexture("assets/lancador.png");
@@ -42,5 +46,6 @@ void unload_assets(Assets *assets) {
     if (assets->ball_dif.id > 0) UnloadTexture(assets->ball_dif);
     if (assets->menu.id > 0) UnloadTexture(assets->menu);
     if (assets->instructions.id > 0) UnloadTexture(assets->instructions);
+    if (assets->court.id > 0) UnloadTexture(assets->court);
     if (assets->lancador.id > 0) UnloadTexture(assets->lancador);
 }

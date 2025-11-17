@@ -28,17 +28,21 @@
 
 static float game_start_time = 0;
 
+static float pause_start_time = 0.0f;
+static float paused_accum = 0.0f;
+
 void init_game(GameState *state) {
     state->player.x = FIELD_LEFT + 50;
     state->player.y = FIELD_TOP + FIELD_HEIGHT/2 - PLAYER_SIZE/2;
     state->player.speed = 300.0f;
     state->player.lives = 3;
     
-    state->tank.x = FIELD_RIGHT - 30; 
+    state->tank.x = FIELD_RIGHT ; 
     state->tank.y = FIELD_TOP + FIELD_HEIGHT/2; 
     state->tank.shoot_timer = 0;
     state->tank.shoot_cooldown = 1.5f;
-    state->tank.health = 10; 
+    state->tank.health = 30; 
+    state->tank_max_health = state->tank.health;
     
     state->lives = 3;
     state->game_over = false;
@@ -50,7 +54,18 @@ void init_game(GameState *state) {
     state->is_charging = false;
     state->charge_increasing = true;
     state->paused_for_upgrade = false;
+    state->upgrade_generated = false;
+    state->guarantee_next_gold = false;
+    for (int i = 0; i < 3; i++) { state->upgrade_choice_type[i] = -1; state->upgrade_choice_tier[i] = TIER_SILVER; }
     state->extra_special_damage = 0;
+    state->double_throw = false;
+    state->resurrect_available = false;
+    state->resurrect_used = false;
+    state->paused_for_tank_upgrade = false;
+    state->tank_upgrade_generated = false;
+    state->tank_upgrade_choice = -1;
+    state->tank_ball_speed_multiplier = 1.0f;
+    state->player_charge_rate = CHARGE_RATE;
     
     if (state->balls) {
         ball_list_destroy(state->balls);
@@ -58,6 +73,8 @@ void init_game(GameState *state) {
     state->balls = ball_list_create();
     
     game_start_time = GetTime();
+    pause_start_time = 0.0f;
+    paused_accum = 0.0f;
 }
 
 void shoot_ball(GameState *state) {
@@ -72,8 +89,9 @@ void shoot_ball(GameState *state) {
     float distance = sqrt(dx * dx + dy * dy);
     
     if (distance > 0) {
-        ball->vx = (dx / distance) * 400;
-        ball->vy = (dy / distance) * 400;
+        float base_speed = 400.0f * state->tank_ball_speed_multiplier;
+        ball->vx = (dx / distance) * base_speed;
+        ball->vy = (dy / distance) * base_speed;
     }
     ball->thrown_by_player = false;
     }
@@ -83,7 +101,73 @@ void update_game(GameState *state) {
     if (state->game_over) return;
 
 
+    if (state->paused_for_tank_upgrade) {
+        if (!state->tank_upgrade_generated) {
+            state->tank_upgrade_choice = GetRandomValue(0,2); 
+            state->tank_upgrade_generated = true;
+        }
+
+      
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            int choice = state->tank_upgrade_choice;
+            if (choice == 0) {
+                state->tank_ball_speed_multiplier *= 1.25f;
+            } else if (choice == 1) {
+                state->tank.health += 1;
+                state->tank_max_health += 1;
+            } else if (choice == 2) {
+                state->player_charge_rate *= 1.5f;
+            }
+            state->paused_for_tank_upgrade = false;
+            state->tank_upgrade_generated = false;
+            state->tank_upgrade_choice = -1;
+            if (pause_start_time > 0.0f) {
+                paused_accum += GetTime() - pause_start_time;
+                pause_start_time = 0.0f;
+            }
+        }
+        return;
+    }
+
     if (state->paused_for_upgrade) {
+      
+        if (!state->upgrade_generated) {
+       
+            int pool[3] = { UP_LIFE, UP_SPEED, UP_DMG };
+         
+            for (int i = 2; i > 0; i--) {
+                int j = GetRandomValue(0, i);
+                int tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+            }
+            for (int k = 0; k < 3; k++) state->upgrade_choice_type[k] = pool[k];
+       
+            float base_heroic = 0.01f; 
+            float base_epic = 0.05f; 
+            float base_gold = 0.15f; 
+            int thresh_heroic = (int)(base_heroic * 100.0f);
+            int thresh_epic = thresh_heroic + (int)(base_epic * 100.0f);
+            int thresh_gold = thresh_epic + (int)(base_gold * 100.0f);
+            for (int k = 0; k < 3; k++) {
+                int r = GetRandomValue(0, 99);
+                if (r < thresh_heroic) state->upgrade_choice_tier[k] = TIER_HEROIC;
+                else if (r < thresh_epic) state->upgrade_choice_tier[k] = TIER_EPIC;
+                else if (r < thresh_gold) state->upgrade_choice_tier[k] = TIER_GOLD;
+                else state->upgrade_choice_tier[k] = TIER_SILVER;
+            }
+          
+            if (state->guarantee_next_gold) {
+                int found = 0;
+                for (int k = 0; k < 3; k++) if (state->upgrade_choice_tier[k] == TIER_GOLD || state->upgrade_choice_tier[k] == TIER_EPIC || state->upgrade_choice_tier[k] == TIER_HEROIC) found = 1;
+                if (!found) {
+                    int pick = GetRandomValue(0,2);
+                    state->upgrade_choice_tier[pick] = TIER_GOLD;
+                }
+                state->guarantee_next_gold = false;
+            }
+            state->upgrade_generated = true;
+        }
+
+       
         const int CARD_W = 260;
         const int CARD_H = 140;
         const int GAP = 30;
@@ -97,32 +181,53 @@ void update_game(GameState *state) {
 
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             Vector2 mp = GetMousePosition();
-            if (CheckCollisionPointRec(mp, card0)) {
-          
-                state->player.lives += 1;
-                state->lives += 1;
-                state->paused_for_upgrade = false;
-                return;
-            } else if (CheckCollisionPointRec(mp, card1)) {
-              
-                state->player.speed *= 1.25f;
-                state->paused_for_upgrade = false;
-                return;
-            } else if (CheckCollisionPointRec(mp, card2)) {
-             
-                state->extra_special_damage += 1;
-                state->paused_for_upgrade = false;
-                return;
+            for (int idx = 0; idx < 3; idx++) {
+                Rectangle rc = (idx == 0) ? card0 : (idx == 1) ? card1 : card2;
+                if (CheckCollisionPointRec(mp, rc)) {
+                    int type = state->upgrade_choice_type[idx];
+                    int tier = state->upgrade_choice_tier[idx];
+               
+                    if (type == UP_LIFE) {
+                        if (tier == TIER_HEROIC) {
+                        
+                            state->resurrect_available = true;
+                            state->resurrect_used = false;
+                        } else if (tier == TIER_EPIC) {
+                          
+                            state->player.lives = 3; state->lives = 3;
+                        } else if (tier == TIER_GOLD) {
+                            state->player.lives += 2; state->lives += 2;
+                        } else {
+                            state->player.lives += 1; state->lives += 1;
+                        }
+                    } else if (type == UP_SPEED) {
+                        if (tier == TIER_HEROIC) state->player.speed *= 1.50f;
+                        else if (tier == TIER_EPIC) state->player.speed *= 1.30f;
+                        else if (tier == TIER_GOLD) state->player.speed *= 1.25f;
+                        else state->player.speed *= 1.10f;
+                    } else if (type == UP_DMG) {
+                        if (tier == TIER_HEROIC) { state->extra_special_damage += 3; state->double_throw = true; }
+                        else if (tier == TIER_EPIC) state->extra_special_damage += 3;
+                        else if (tier == TIER_GOLD) state->extra_special_damage += 2;
+                        else state->extra_special_damage += 1;
+                    }
+                
+                    state->paused_for_upgrade = false;
+                    state->upgrade_generated = false;
+                    if (pause_start_time > 0.0f) {
+                        paused_accum += GetTime() - pause_start_time;
+                        pause_start_time = 0.0f;
+                    }
+                    return;
+                }
             }
         }
-
-       
         return;
     }
     
     float elapsed = GetTime() - game_start_time;
     state->time_survived = elapsed;
-    state->score = (int)(elapsed * 10);
+   
     
     if (IsKeyDown(KEY_RIGHT)) {
         state->player.x += state->player.speed * GetFrameTime();
@@ -183,13 +288,13 @@ void update_game(GameState *state) {
     if (state->held_ball && state->is_charging) {
        
         if (state->charge_increasing) {
-            state->charge += CHARGE_RATE * GetFrameTime();
+            state->charge += state->player_charge_rate * GetFrameTime();
             if (state->charge >= 1.0f) {
                 state->charge = 1.0f;
                 state->charge_increasing = false;
             }
         } else {
-            state->charge -= CHARGE_RATE * GetFrameTime();
+            state->charge -= state->player_charge_rate * GetFrameTime();
             if (state->charge <= 0.0f) {
                 state->charge = 0.0f;
                 state->charge_increasing = true;
@@ -221,6 +326,22 @@ void update_game(GameState *state) {
             }
             b->active = true;
             b->thrown_by_player = true; 
+           
+            if (state->double_throw) {
+                Ball *nb = ball_list_add(state->balls);
+                if (nb) {
+              
+                    nb->x = b->x - b->vy * 0.05f;
+                    nb->y = b->y + b->vx * 0.05f;
+                    nb->vx = b->vx;
+                    nb->vy = b->vy;
+                    nb->active = true;
+                    nb->thrown_by_player = true;
+                    nb->is_different = b->is_different;
+                    nb->max_travel = b->max_travel;
+                    nb->travelled = b->travelled;
+                }
+            }
           
             state->held_ball = NULL;
             state->is_charging = false;
@@ -262,7 +383,21 @@ void update_game(GameState *state) {
                     state->player.lives--;
                     
                     if (state->lives <= 0) {
-                        state->game_over = true;
+                     
+                        if (state->resurrect_available && !state->resurrect_used) {
+                            state->resurrect_used = true;
+                            state->lives = 1;
+                            state->player.lives = 1;
+                          
+                        } else {
+                            state->game_over = true;
+                        }
+                    }
+                  
+                    if (!current->thrown_by_player && !state->paused_for_tank_upgrade && !state->game_over) {
+                        state->paused_for_tank_upgrade = true;
+                        state->tank_upgrade_generated = false;
+                        if (pause_start_time <= 0.0f) pause_start_time = GetTime();
                     }
                 }
 
@@ -271,7 +406,7 @@ void update_game(GameState *state) {
                     if (current->is_different) {
                   
                         state->tank.health -= (1 + state->extra_special_damage);
-                        state->score += 50; 
+                      
                         if (state->tank.health <= 0) {
                   
                             state->tank.shoot_cooldown = 9999.0f;
@@ -282,8 +417,9 @@ void update_game(GameState *state) {
                                 add_ranking_entry("ranking.txt", state->player_name, state->time_survived);
                             }
                         } else {
-                           
+                        
                             state->paused_for_upgrade = true;
+                            if (pause_start_time <= 0.0f) pause_start_time = GetTime();
                         }
                     }
                     current->active = false;
@@ -343,25 +479,35 @@ void draw_game(GameState *state, float time_remaining, Assets *assets) {
     }
 
 
-    {
-        float bar_w = 60.0f;
-        float bar_h = 8.0f;
-        float bx = state->tank.x - bar_w/2;
-        float by = state->tank.y - (float)TANK_SIZE/2 - 14.0f;
-        DrawRectangle((int)bx - 1, (int)by - 1, (int)bar_w + 2, (int)bar_h + 2, BLACK);
-        DrawRectangle((int)bx, (int)by, (int)bar_w, (int)bar_h, GRAY);
-        float hp_ratio = (state->tank.health > 0) ? ((float)state->tank.health / 6.0f) : 0.0f;
-        DrawRectangle((int)bx, (int)by, (int)(bar_w * hp_ratio), (int)bar_h, RED);
-    }
+
     
     Ball *current = state->balls->head;
     while (current) {
-        if (current->active) {
-            if (current->is_different && assets->ball_dif.id > 0) {
-                Rectangle src_bd = { 0.0f, 0.0f, (float)assets->ball_dif.width, (float)assets->ball_dif.height };
-                Rectangle dest_bd = { current->x, current->y, (float)BALL_SIZE, (float)BALL_SIZE };
-                Vector2 origin_bd = { 0.0f, 0.0f };
-                DrawTexturePro(assets->ball_dif, src_bd, dest_bd, origin_bd, 0.0f, WHITE);
+            if (current->active) {
+            if (current->is_different) {
+            
+                int cx = (int)(current->x + BALL_SIZE/2);
+                int cy = (int)(current->y + BALL_SIZE/2);
+                DrawCircle(cx, cy, BALL_SIZE/2, (Color){255,140,0,200}); 
+         
+                DrawCircle(cx, cy, (int)(BALL_SIZE * 0.7f), (Color){255,200,0,60});
+            
+                if (assets->ball.id > 0) {
+                    Rectangle src_bd = { 0.0f, 0.0f, (float)assets->ball.width, (float)assets->ball.height };
+                    float tex_scale = 0.85f;
+                    Rectangle dest_bd = { current->x + (1.0f - tex_scale) * BALL_SIZE/2, current->y + (1.0f - tex_scale) * BALL_SIZE/2, (float)BALL_SIZE * tex_scale, (float)BALL_SIZE * tex_scale };
+                    Vector2 origin_bd = { dest_bd.width/2, dest_bd.height/2 };
+                    float rot = sinf(GetTime()*10.0f + current->x + current->y) * 12.0f;
+                    BeginBlendMode(BLEND_ADDITIVE);
+                    DrawTexturePro(assets->ball, src_bd, dest_bd, origin_bd, rot, (Color){255,220,180,200});
+                    Rectangle dest_bd2 = dest_bd;
+                    dest_bd2.x -= dest_bd2.width * 0.12f;
+                    dest_bd2.y -= dest_bd2.height * 0.12f;
+                    dest_bd2.width *= 1.24f;
+                    dest_bd2.height *= 1.24f;
+                    DrawTexturePro(assets->ball, src_bd, dest_bd2, (Vector2){dest_bd2.width/2, dest_bd2.height/2}, rot*0.6f, (Color){255,160,80,80});
+                    EndBlendMode();
+                }
             } else if (assets->ball.id > 0) {
                 Rectangle src_b = { 0.0f, 0.0f, (float)assets->ball.width, (float)assets->ball.height };
                 Rectangle dest_b = { current->x, current->y, (float)BALL_SIZE, (float)BALL_SIZE };
@@ -377,11 +523,27 @@ void draw_game(GameState *state, float time_remaining, Assets *assets) {
  
     if (state->held_ball) {
         Ball *hb = state->held_ball;
-        if (hb->is_different && assets->ball_dif.id > 0) {
-            Rectangle src_h = { 0.0f, 0.0f, (float)assets->ball_dif.width, (float)assets->ball_dif.height };
-            Rectangle dest_h = { hb->x, hb->y, (float)BALL_SIZE, (float)BALL_SIZE };
-            Vector2 origin_h = { 0.0f, 0.0f };
-            DrawTexturePro(assets->ball_dif, src_h, dest_h, origin_h, 0.0f, WHITE);
+        if (hb->is_different) {
+            int cx = (int)(hb->x + BALL_SIZE/2);
+            int cy = (int)(hb->y + BALL_SIZE/2);
+            DrawCircle(cx, cy, BALL_SIZE/2, (Color){255,140,0,200});
+            DrawCircle(cx, cy, (int)(BALL_SIZE * 0.7f), (Color){255,200,0,60});
+            if (assets->ball.id > 0) {
+                Rectangle src_h = { 0.0f, 0.0f, (float)assets->ball.width, (float)assets->ball.height };
+                float tex_scale = 0.85f;
+                Rectangle dest_h = { hb->x + (1.0f - tex_scale) * BALL_SIZE/2, hb->y + (1.0f - tex_scale) * BALL_SIZE/2, (float)BALL_SIZE * tex_scale, (float)BALL_SIZE * tex_scale };
+                Vector2 origin_h = { dest_h.width/2, dest_h.height/2 };
+                float rot = sinf(GetTime()*10.0f + hb->x + hb->y) * 12.0f;
+                BeginBlendMode(BLEND_ADDITIVE);
+                DrawTexturePro(assets->ball, src_h, dest_h, origin_h, rot, (Color){255,220,180,200});
+                Rectangle dest_h2 = dest_h;
+                dest_h2.x -= dest_h2.width * 0.12f;
+                dest_h2.y -= dest_h2.height * 0.12f;
+                dest_h2.width *= 1.24f;
+                dest_h2.height *= 1.24f;
+                DrawTexturePro(assets->ball, src_h, dest_h2, (Vector2){dest_h2.width/2, dest_h2.height/2}, rot*0.6f, (Color){255,160,80,80});
+                EndBlendMode();
+            }
         } else if (assets->ball.id > 0) {
             Rectangle src_h = { 0.0f, 0.0f, (float)assets->ball.width, (float)assets->ball.height };
             Rectangle dest_h = { hb->x, hb->y, (float)BALL_SIZE, (float)BALL_SIZE };
@@ -392,9 +554,64 @@ void draw_game(GameState *state, float time_remaining, Assets *assets) {
         }
     }
     
-    DrawText(TextFormat("Tempo: %.1f", time_remaining), 20, 20, 40, WHITE);
+
+    float display_time = time_remaining - paused_accum;
+    if (pause_start_time > 0.0f) display_time -= (GetTime() - pause_start_time);
+    DrawText(TextFormat("Tempo: %.1f", display_time), 20, 20, 40, WHITE);
     DrawText(TextFormat("Vidas: %d", state->lives), 20, 70, 40, RED);
-    DrawText(TextFormat("Pontos: %d", state->score), 20, 120, 40, YELLOW);
+  
+
+  
+    {
+        int bar_w = 600;
+        int bar_h = 20;
+        int bx = SCREEN_WIDTH/2 - bar_w/2;
+        int by = 16;
+        DrawRectangle(bx - 2, by - 2, bar_w + 4, bar_h + 4, (Color){0,0,0,180});
+        DrawRectangle(bx, by, bar_w, bar_h, (Color){60,60,60,220});
+        float hp_ratio = (state->tank_max_health > 0) ? ((float)state->tank.health / (float)state->tank_max_health) : 0.0f;
+        if (hp_ratio < 0.0f) hp_ratio = 0.0f;
+        if (hp_ratio > 1.0f) hp_ratio = 1.0f;
+        DrawRectangle(bx, by, (int)(bar_w * hp_ratio), bar_h, RED);
+        DrawText(TextFormat("Lançador"), bx + 8, by - 2, 18, WHITE);
+        DrawText(TextFormat("%d / %d", state->tank.health, state->tank_max_health), bx + bar_w - 80, by - 2, 16, WHITE);
+    }
+
+  
+    if (state->paused_for_tank_upgrade) {
+        DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (Color){0,0,0,160});
+        const int CARD_W = 420;
+        const int CARD_H = 180;
+        int cx = SCREEN_WIDTH/2 - CARD_W/2;
+        int cy = SCREEN_HEIGHT/2 - CARD_H/2;
+        Rectangle rc = { (float)cx, (float)cy, (float)CARD_W, (float)CARD_H };
+        DrawRectangleRec(rc, (Color){30,30,40,220});
+        DrawRectangleLinesEx(rc, 4, (Color){200,80,10,255});
+        int choice = state->tank_upgrade_choice;
+        if (choice == 0) {
+            DrawText("Lançador: Velocidade das bolas +25%", cx + 20, cy + 30, 20, WHITE);
+            DrawText("As bolas do lançador ficaram mais rápidas.", cx + 20, cy + 70, 16, GRAY);
+        } else if (choice == 1) {
+            DrawText("Lançador: Vida +1", cx + 20, cy + 30, 22, WHITE);
+            DrawText("O lançador ganhou 1 ponto de vida.", cx + 20, cy + 70, 16, GRAY);
+        } else if (choice == 2) {
+            DrawText("Lançador: Barra de lançamento mais rápida", cx + 20, cy + 30, 18, WHITE);
+            DrawText("A barra de lançamento do jogador oscila mais rápido.", cx + 20, cy + 70, 14, GRAY);
+        }
+        DrawText("Clique para continuar", SCREEN_WIDTH/2 - 100, cy + CARD_H + 12, 16, YELLOW);
+    }
+
+  
+    if (state->resurrect_available && !state->resurrect_used) {
+        int tx = 240;
+        int ty = 70;
+        BeginBlendMode(BLEND_ADDITIVE);
+        DrawCircle(tx, ty + 10, 14, (Color){255,90,0,200});
+        DrawCircle(tx, ty + 10, 8, (Color){255,200,0,120});
+        EndBlendMode();
+        DrawText("R", tx - 6, ty - 2, 20, WHITE);
+        DrawText("Ressurreição", tx + 20, ty - 6, 18, (Color){255,165,0,255});
+    }
 
    
     if (state->is_charging && state->held_ball) {
@@ -425,27 +642,90 @@ void draw_game(GameState *state, float time_remaining, Assets *assets) {
         Rectangle card1 = { (float)(start_x + CARD_W + GAP), (float)y, (float)CARD_W, (float)CARD_H };
         Rectangle card2 = { (float)(start_x + (CARD_W + GAP) * 2), (float)y, (float)CARD_W, (float)CARD_H };
 
-       
+    
         DrawRectangleRec(card0, (Color){40,40,60,220});
         DrawRectangleRec(card1, (Color){40,40,60,220});
         DrawRectangleRec(card2, (Color){40,40,60,220});
 
     
-        Color c0 = CheckCollisionPointRec(GetMousePosition(), card0) ? YELLOW : WHITE;
-        Color c1 = CheckCollisionPointRec(GetMousePosition(), card1) ? YELLOW : WHITE;
-        Color c2 = CheckCollisionPointRec(GetMousePosition(), card2) ? YELLOW : WHITE;
-        DrawRectangleLinesEx(card0, 3, c0);
-        DrawRectangleLinesEx(card1, 3, c1);
-        DrawRectangleLinesEx(card2, 3, c2);
+        Color silver = (Color){192,192,192,255};
+        Color gold = (Color){255,215,0,255};
+        for (int i = 0; i < 3; i++) {
+            Rectangle rc = (i==0)?card0: (i==1)?card1:card2;
+            int border_tier = state->upgrade_choice_tier[i];
+            Color border = silver;
+            if (border_tier == TIER_GOLD) border = gold;
+            if (border_tier == TIER_EPIC) border = (Color){160,32,240,255};
+     
+            bool hovering = CheckCollisionPointRec(GetMousePosition(), rc);
+            if (border_tier == TIER_HEROIC) {
+              
+                Color fire1 = (Color){255,90,0,200};
+                Color fire2 = (Color){255,160,40,140};
+                Color fire3 = (Color){255,220,120,100};
+                if (hovering) {
+                    DrawRectangleLinesEx(rc, 4, YELLOW);
+                } else {
+                    BeginBlendMode(BLEND_ADDITIVE);
+                    DrawRectangleLinesEx(rc, 3, fire1);
+                    Rectangle r2 = rc; r2.x -= 4; r2.y -= 4; r2.width += 8; r2.height += 8;
+                    DrawRectangleLinesEx(r2, 2, fire2);
+                    Rectangle r3 = rc; r3.x -= 8; r3.y -= 8; r3.width += 16; r3.height += 16;
+                    DrawRectangleLinesEx(r3, 1, fire3);
+                    EndBlendMode();
+                }
+            } else {
+                Color hov = hovering ? YELLOW : border;
+                DrawRectangleLinesEx(rc, 3, hov);
+            }
 
-        DrawText("+1 Vida", card0.x + 30, card0.y + 40, 28, WHITE);
-        DrawText("Ganha 1 vida extra", card0.x + 20, card0.y + 80, 14, GRAY);
-
-        DrawText("+25% Velocidade", card1.x + 10, card1.y + 40, 24, WHITE);
-        DrawText("Aumenta velocidade do jogador", card1.x + 10, card1.y + 80, 14, GRAY);
-
-        DrawText("+1 Dano (bola dif)", card2.x + 10, card2.y + 40, 22, WHITE);
-        DrawText("Especial causa +1 dano", card2.x + 20, card2.y + 80, 14, GRAY);
+          
+            int type = state->upgrade_choice_type[i];
+            int tier = state->upgrade_choice_tier[i];
+            if (type == UP_LIFE) {
+                if (tier == TIER_HEROIC) {
+                    DrawText("Vida: Token de ressurreição (Heroico)", rc.x + 10, rc.y + 20, 16, WHITE);
+                    DrawText("Concede um token que ressuscita uma vez com 1 vida.", rc.x + 10, rc.y + 60, 12, GRAY);
+                } else if (tier == TIER_EPIC) {
+                    DrawText("Vida: restaura tudo (Epico)", rc.x + 10, rc.y + 20, 18, WHITE);
+                    DrawText("Restaura todas as vidas perdidas", rc.x + 10, rc.y + 60, 14, GRAY);
+                } else if (tier == TIER_GOLD) {
+                    DrawText("Vida +2 (Ouro)", rc.x + 20, rc.y + 30, 22, WHITE);
+                    DrawText("Ganha 2 vidas!", rc.x + 20, rc.y + 70, 14, GRAY);
+                } else {
+                    DrawText("Vida +1 (Prata)", rc.x + 30, rc.y + 30, 20, WHITE);
+                    DrawText("Ganha 1 vida", rc.x + 30, rc.y + 70, 14, GRAY);
+                }
+            } else if (type == UP_SPEED) {
+                if (tier == TIER_HEROIC) {
+                    DrawText("Velocidade +50% (Heroico)", rc.x + 10, rc.y + 30, 18, WHITE);
+                    DrawText("Aumenta velocidade do jogador em 50% (forte)", rc.x + 10, rc.y + 70, 12, GRAY);
+                } else if (tier == TIER_EPIC) {
+                    DrawText("Velocidade +30% (Epico)", rc.x + 10, rc.y + 30, 18, WHITE);
+                    DrawText("Aumenta velocidade em 30%", rc.x + 10, rc.y + 70, 14, GRAY);
+                } else if (tier == TIER_GOLD) {
+                    DrawText("Velocidade +25% (Ouro)", rc.x + 10, rc.y + 30, 18, WHITE);
+                    DrawText("Aumenta velocidade em 25%", rc.x + 10, rc.y + 70, 14, GRAY);
+                } else {
+                    DrawText("Velocidade +10% (Prata)", rc.x + 20, rc.y + 30, 18, WHITE);
+                    DrawText("Aumenta velocidade em 10%", rc.x + 20, rc.y + 70, 14, GRAY);
+                }
+            } else if (type == UP_DMG) {
+                if (tier == TIER_HEROIC) {
+                    DrawText("Dano +3 + Duplo (Heroico)", rc.x + 20, rc.y + 30, 20, WHITE);
+                    DrawText("Bolas especiais +3 dano e atira duas bolas", rc.x + 10, rc.y + 70, 12, GRAY);
+                } else if (tier == TIER_EPIC) {
+                    DrawText("Dano +3 (Epico)", rc.x + 30, rc.y + 30, 22, WHITE);
+                    DrawText("Bolas especiais +3 dano", rc.x + 20, rc.y + 70, 14, GRAY);
+                } else if (tier == TIER_GOLD) {
+                    DrawText("Dano +2 (Ouro)", rc.x + 30, rc.y + 30, 22, WHITE);
+                    DrawText("Bolas especiais +2 dano", rc.x + 20, rc.y + 70, 14, GRAY);
+                } else {
+                    DrawText("Dano +1 (Prata)", rc.x + 30, rc.y + 30, 20, WHITE);
+                    DrawText("Bolas especiais +1 dano", rc.x + 20, rc.y + 70, 14, GRAY);
+                }
+            }
+        }
 
         DrawText("Clique em uma carta para selecionar", SCREEN_WIDTH/2 - 200, (int)(y + CARD_H + 20), 18, WHITE);
     }
@@ -465,8 +745,9 @@ void draw_game(GameState *state, float time_remaining, Assets *assets) {
 }
 
 float get_game_time_remaining(void) {
-   
-    float elapsed = GetTime() - game_start_time;
+    float now = GetTime();
+    float elapsed = now - game_start_time - paused_accum;
+    if (pause_start_time > 0.0f) elapsed -= (now - pause_start_time);
     return elapsed;
 }
 
